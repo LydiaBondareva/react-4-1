@@ -1,116 +1,95 @@
-import { useState } from 'react';
+import { useRef } from 'react';
 import styles from './app.module.css';
+import * as yup from 'yup';
+import { useForm } from 'react-hook-form';
+import { yupResolver } from '@hookform/resolvers/yup';
 
 function App() {
-	const [formData, setFormData] = useState({
-		email: '',
-		password: '',
-		passwordCheck: '',
+	const {
+		register,
+		watch,
+		handleSubmit,
+		formState: { errors },
+	} = useForm({
+		defaultValues: {
+			email: '',
+			password: '',
+			passwordCheck: '',
+		},
 	});
-	const [error, setError] = useState({
-		emailErr: false,
-		passwordErr: false,
-		checkPasswordErr: false,
-	});
 
-	function onChange({ target }, check) {
-		setFormData((prevData) => {
-			const newData = { ...prevData };
-			newData[target.name] = target.value;
-			return newData;
-		});
-		if (check) {
-			if (target.value !== formData.password) {
-				setError({ ...error, checkPasswordErr: 'Пароли не совпадают' });
-			} else {
-				setError({ ...error, checkPasswordErr: null });
-			}
-		}
-	}
-	function onEmailBlur() {
-		setError({ ...error, emailErr: null });
+	const registerRef = useRef(null);
 
-		let test = /^[\w_%+-]+@[\w-]+\.[\w]{2,}$/.test(formData.email);
+	const emailErr = errors.email?.message;
+	const passwordErr = errors.password?.message;
+	const checkPasswordErr = errors.passwordCheck?.message;
+	const password = watch('password');
 
-		if (!test) {
-			setError({
-				...error,
-				emailErr: `Пожалуйста, введите корректный email-адрес. Убедитесь, что:
+	const emailProps = {
+		pattern: {
+			value: /^[\w_%+-]+@[\w-]+\.[\w]{2,}$/,
+			message: `Пожалуйста, введите корректный email-адрес. Убедитесь, что:
 				- он содержит символ "@"
 				- в имени пользователя (до "@") используются только латинские буквы, цифры, точки, подчёркивания, %, + или -
 				- в доменном имени (после "@") используются только латинские буквы, цифры и дефисы
 				- есть хотя бы одна точка (например, example.com)`,
-			});
-		} else {
-			setError({ ...error, emailErr: null });
-		}
-	}
+		},
+		required: 'Поле "email" обязательно для заполнения',
+	};
 
-	function onPasswordBlur() {
-		setError({ ...error, passwordErr: null });
-		let test = /^(?=.*\d)(?=.*[a-z])(?=.*[A-Z]).{8,}$/.test(formData.password);
-
-		if (!test) {
-			setError({
-				...error,
-				passwordErr: `Пожалуйста, введите корректный пароль. Убедитесь, что он содержит:
+	const passwordProps = {
+		pattern: {
+			value: /^(?=.*\d)(?=.*[a-z])(?=.*[A-Z]).{8,}$/,
+			message: `Пожалуйста, введите корректный пароль. Убедитесь, что он содержит:
 				- минимум 8 символов
 				- минимум одну цифру
 				- минимум одну строчную латинскую букву
 				- минимум одну заглавную латинскую букву`,
-			});
-		} else {
-			setError({ ...error, passwordErr: null });
-		}
-	}
+		},
+		required: 'Поле "пароль" обязательно для заполнения',
+	};
 
-	function onSubmit(event) {
-		event.preventDefault();
+	const passwordCheckProps = {
+		required: 'Поле "повторите пароль" обязательно для заполнения',
+		validate: (value) => value === password || 'Пароли не совпадают',
+	};
+
+	function onSubmit(formData) {
+		if (registerRef.current) {
+			registerRef.current.focus();
+		}
 		console.log(formData);
 	}
 
 	return (
 		<div className={styles['registration-form']}>
 			<h1>Регистрация</h1>
-			{error.emailErr && <div className={styles.error}>{error.emailErr}</div>}
-			{error.passwordErr && <div className={styles.error}>{error.passwordErr}</div>}
-			{error.checkPasswordErr && (
-				<div className={styles.error}>{error.checkPasswordErr}</div>
-			)}
-			<form>
+			{emailErr && <div className={styles.error}>{emailErr}</div>}
+			{passwordErr && <div className={styles.error}>{passwordErr}</div>}
+			{checkPasswordErr && <div className={styles.error}>{checkPasswordErr}</div>}
+			<form onSubmit={handleSubmit(onSubmit)}>
 				<input
+					{...register('email', emailProps)}
 					type="email"
 					name="email"
 					placeholder="Введите email"
-					value={formData.email}
-					onChange={onChange}
-					onBlur={onEmailBlur}
 				/>
 				<input
+					{...register('password', passwordProps)}
 					type="password"
 					name="password"
 					placeholder="Введите пароль"
-					value={formData.password}
-					onChange={onChange}
-					onBlur={onPasswordBlur}
 				/>
 				<input
+					{...register('passwordCheck', passwordCheckProps)}
 					type="password"
 					name="passwordCheck"
 					placeholder="Повторите пароль"
-					onChange={(event) => onChange(event, 'check')}
 				/>
 				<button
+					ref={registerRef}
 					type="submit"
-					disabled={
-						error.checkPasswordErr ||
-						error.emailErr ||
-						error.passwordErr ||
-						!formData.email ||
-						!formData.password ||
-						!formData.passwordCheck
-					}
-					onClick={onSubmit}
+					disabled={!!checkPasswordErr || !!emailErr || !!passwordErr}
 				>
 					Зарегистрироваться
 				</button>
